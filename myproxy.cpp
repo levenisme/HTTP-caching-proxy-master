@@ -15,7 +15,7 @@ std::mutex mymutex;
 int main(int argc, char ** argv) {
     // read command line parameters
 
-  connectWebserver();
+
     // Create socket
     int sockfd;
     struct sockaddr_in proxyaddr;
@@ -81,8 +81,10 @@ int main(int argc, char ** argv) {
         // Create thread to handle request
         MyLock lk(&mymutex);
 
+	//Get request from browser
         handlehttp(reqfd);
 
+	
         if (DEVELOPMENT) {
             std::cout<<"Finish service, close connection"<<std::endl;
             close(reqfd);

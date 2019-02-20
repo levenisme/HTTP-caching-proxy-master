@@ -59,6 +59,12 @@ class HTTP {
         if (DEVELOPMENT) std::cout<<"Remain body: "<<lines<<std::endl;
         return lines;
     }
+    std::string getbuffer(){
+      return buffer;
+    }
+    std::unordered_map<std::string, std::string> getheader(){
+      return header;
+    }
 };
 
 class HTTPRequest: public HTTP {
@@ -220,7 +226,35 @@ class MyLock {
 
 std::unordered_map<std::string, HTTPResponse> cache;
 
+int connectWebserver(std::string host){
+  int status;
+  int web_fd;
+  struct addrinfo host_info;
+  struct addrinfo *host_info_list;
+  const char *hostname =host.c_str();
+  const char *port = "80";
+  memset(&host_info, 0 , sizeof(host_info));
+  host_info.ai_family   = AF_UNSPEC;
+  host_info.ai_socktype = SOCK_STREAM;
 
+  status = getaddrinfo(hostname, port, &host_info, &host_info_list);
+  if (status != 0) {
+    std::cerr << "Error: cannot get address info for host" << std::endl;
+  }
+  web_fd = socket(host_info_list->ai_family,
+                     host_info_list->ai_socktype,
+                     host_info_list->ai_protocol);
+  if (web_fd == -1) {
+    std::cerr << "Error: cannot create socket to the web" << std::endl;
+  }
+  std::cout << "Connecting to " << hostname << " on port " << port << "..." << std::endl;
+  status = connect(web_fd, host_info_list->ai_addr, host_info_list->ai_addrlen);
+  if (status == -1) {
+    std::cerr << "Error: cannot connect to socket to the web" << std::endl;
+  }
+  std::cout << "connecting to web" << std::endl;
+  return web_fd;
+}
 void handlehttp(int reqfd) {
     // Get request
     char buffer[40960];
@@ -232,57 +266,21 @@ void handlehttp(int reqfd) {
     std::string temp(buffer);
     HTTPRequest newreq(temp);
     newreq.parseBuffer();
-
+    std::unordered_map<std::string, std::string> header = newreq.getheader();
+    std::string tempcheck = header["Host"];
+    std::cout << "temp check: "<<tempcheck << std::endl;
     // Check cache
 
+    // Connect web server
+    int resfd = connectWebserver(tempcheck);
+    
     // Send request
-
-    // Send response
+    int sizesen = send(resfd, buffer, 40960, 0);
+    std::cout<<"request send to web: "<<std::endl;                                      
+    // Get response
+    char resbuffer[40960];                                                                                  
+    int sizeres = recv(resfd, resbuffer, 40960, 0);
+    std::cout << "resbuffer: "<<std::endl<<resbuffer<<std::endl;
 }
 
-void connectWebserver(void){
-  int status;
-  int web_fd;
-  struct addrinfo host_info;
-  struct addrinfo *host_info_list;
-  //  const char myhost[100];
-  // char google[100]="www.google.com";
-  // gethostname(google, 100);
-  // const char *hostnam = myhost;
-  std::string temp= "rabihyounes.com";
-  const char *hostname =temp.c_str(); 
-  const char *port = "80";
-  memset(&host_info, 0 , sizeof(host_info));
-  host_info.ai_family   = AF_UNSPEC;
-  host_info.ai_socktype = SOCK_STREAM;
-
-  status = getaddrinfo(hostname, port, &host_info, &host_info_list);
-  if (status != 0) {
-    std::cerr << "Error: cannot get address info for host" << std::endl;
-    // std::cerr << "  (" << hostname << "," << port << ")" <<std::endl;
-    //    return -1;
-  }
-  web_fd = socket(host_info_list->ai_family, 
-		     host_info_list->ai_socktype, 
-		     host_info_list->ai_protocol);
-  if (web_fd == -1) {
-    std::cerr << "Error: cannot create socket to the web" << std::endl;
-    //std::cerr << "  (" << hostname << "," << port << ")" << endl;
-    //return -1;
-  }
-  std::cout << "Connecting to " << hostname << " on port " << port << "..." << std::endl;
-  status = connect(web_fd, host_info_list->ai_addr, host_info_list->ai_addrlen);
-  if (status == -1) {
-    std::cerr << "Error: cannot connect to socket to the web" << std::endl;
-    // std::cerr << "  (" << hostname << "," << port << ")" << std::endl;
-    //return -1;
-  } 
-  std::cout << "connecting to web" << std::endl;
-  /*  char buffer[40960];
-  int size = recv(web_fd, buffer, 40960, 0);
-   
-  std::cout<<"Buffer received in web: "<<std::endl<<buffer;
-  */
-
-}
 
